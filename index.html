@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="A simple, privacy-friendly password strength checker. Passwords are evaluated locally in your browser.">
+  <title>Password Strength Checker</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b1020;
+      --panel: rgba(20, 28, 49, .92);
+      --muted: #9aa8c3;
+      --text: #eef3ff;
+      --line: rgba(159, 180, 220, .16);
+      --accent: #8b9cff;
+      --good: #43d6a0;
+      --warn: #f6c76b;
+      --bad: #ff737e;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; display: grid; place-items: center;
+      padding: 28px 16px; font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif;
+      color: var(--text);
+      background: radial-gradient(ellipse at 15% 10%, #1c2b56 0, transparent 38%),
+                  radial-gradient(ellipse at 90% 85%, #24204d 0, transparent 35%), var(--bg);
+    }
+    .wrap { width: min(100%, 620px); }
+    .eyebrow { color: #aebcff; font-size: .76rem; font-weight: 750; letter-spacing: .16em; text-transform: uppercase; }
+    h1 { margin: 10px 0 8px; font-size: clamp(2rem, 6vw, 3rem); letter-spacing: -.045em; }
+    .intro { margin: 0 0 24px; color: var(--muted); line-height: 1.6; }
+    .card {
+      padding: clamp(20px, 5vw, 32px); border: 1px solid var(--line); border-radius: 24px;
+      background: var(--panel); box-shadow: 0 24px 80px rgba(0,0,0,.35); backdrop-filter: blur(14px);
+    }
+    label { display: block; margin-bottom: 10px; font-size: .9rem; font-weight: 650; }
+    .input-row { display: flex; gap: 8px; }
+    input {
+      width: 100%; min-width: 0; padding: 15px 16px; color: var(--text);
+      background: #0c1428; border: 1px solid #354361; border-radius: 12px;
+      font: inherit; outline: none; transition: border-color .2s, box-shadow .2s;
+    }
+    input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(139,156,255,.16); }
+    .toggle {
+      flex: 0 0 auto; padding: 0 15px; border: 1px solid #354361; border-radius: 12px;
+      color: var(--text); background: #17223b; font-weight: 650; cursor: pointer;
+    }
+    button:focus-visible { outline: 3px solid rgba(139,156,255,.55); outline-offset: 3px; }
+    .meter-head { display: flex; justify-content: space-between; gap: 12px; margin: 24px 0 10px; }
+    .meter-head span:first-child { color: var(--muted); font-size: .9rem; }
+    #strengthLabel { font-weight: 750; }
+    .track { height: 10px; overflow: hidden; background: #27334c; border-radius: 99px; }
+    #bar { width: 0%; height: 100%; border-radius: inherit; background: var(--bad); transition: width .25s ease, background .25s ease; }
+    .hint { min-height: 24px; margin: 12px 0 20px; color: var(--muted); font-size: .88rem; line-height: 1.5; }
+    h2 { margin: 22px 0 13px; font-size: 1rem; }
+    .checks { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; }
+    .check {
+      display: flex; align-items: center; gap: 10px; padding: 12px;
+      border: 1px solid var(--line); border-radius: 12px; color: var(--muted); font-size: .88rem;
+      background: rgba(10,17,34,.45);
+    }
+    .dot { width: 19px; height: 19px; display: grid; place-items: center; flex: 0 0 auto;
+      border-radius: 50%; border: 1px solid #64718b; font-size: .72rem; }
+    .check.pass { color: #d8ffef; border-color: rgba(67,214,160,.32); }
+    .check.pass .dot { color: #071b15; background: var(--good); border-color: var(--good); }
+    .privacy { display: flex; gap: 10px; margin-top: 22px; padding: 13px 14px;
+      color: #b9c8e4; background: rgba(139,156,255,.08); border: 1px solid rgba(139,156,255,.18);
+      border-radius: 12px; font-size: .82rem; line-height: 1.5; }
+    .footer { margin: 18px 0 0; text-align: center; color: #74819d; font-size: .78rem; }
+    @media (max-width: 440px) { .checks { grid-template-columns: 1fr; } .toggle { padding: 0 11px; } }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; } }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <div class="eyebrow">Simple security tool</div>
+    <h1>Password Strength Checker</h1>
+    <p class="intro">Check whether a password meets some common strength guidelines. Your password is evaluated locally in this browser.</p>
+
+    <section class="card" aria-label="Password strength checker">
+      <label for="password">Enter a password</label>
+      <div class="input-row">
+        <input id="password" type="password" placeholder="Type a password to check" autocomplete="off" spellcheck="false" aria-describedby="privacy-note">
+        <button class="toggle" id="toggle" type="button" aria-pressed="false">Show</button>
+      </div>
+
+      <div class="meter-head">
+        <span>Strength estimate</span>
+        <span id="strengthLabel" aria-live="polite">Not checked</span>
+      </div>
+      <div class="track" role="progressbar" aria-label="Password strength" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progress">
+        <div id="bar"></div>
+      </div>
+      <p class="hint" id="hint" aria-live="polite">Enter a password to see its strength and improvement tips.</p>
+
+      <h2>Security checklist</h2>
+      <div class="checks">
+        <div class="check" id="length"><span class="dot">–</span><span>At least 12 characters</span></div>
+        <div class="check" id="upper"><span class="dot">–</span><span>Uppercase letter (A–Z)</span></div>
+        <div class="check" id="lower"><span class="dot">–</span><span>Lowercase letter (a–z)</span></div>
+        <div class="check" id="number"><span class="dot">–</span><span>Number (0–9)</span></div>
+        <div class="check" id="symbol"><span class="dot">–</span><span>Special character</span></div>
+        <div class="check" id="long"><span class="dot">–</span><span>At least 16 characters</span></div>
+      </div>
+
+      <div class="privacy" id="privacy-note">
+        <span aria-hidden="true">🔒</span>
+        <span><strong>Privacy:</strong> This demo does not send or save your password. Avoid entering a real password you currently use; test with a sample instead.</span>
+      </div>
+    </section>
+    <p class="footer">Password Strength Checker · Educational prototype</p>
+  </main>
+
+  <script>
+    const passwordInput = document.getElementById('password');
+    const toggleButton = document.getElementById('toggle');
+    const strengthLabel = document.getElementById('strengthLabel');
+    const bar = document.getElementById('bar');
+    const hint = document.getElementById('hint');
+    const progress = document.getElementById('progress');
+
+    const checks = {
+      length: value => value.length >= 12,
+      upper: value => /[A-Z]/.test(value),
+      lower: value => /[a-z]/.test(value),
+      number: value => /[0-9]/.test(value),
+      symbol: value => /[^A-Za-z0-9]/.test(value),
+      long: value => value.length >= 16
+    };
+
+    function evaluatePassword(value) {
+      const results = Object.fromEntries(
+        Object.entries(checks).map(([name, test]) => [name, test(value)])
+      );
+
+      // A simple educational heuristic, not a cryptographic strength estimator.
+      let score = 0;
+      if (value.length >= 8) score += 15;
+      if (value.length >= 12) score += 20;
+      if (value.length >= 16) score += 15;
+      if (results.upper) score += 10;
+      if (results.lower) score += 10;
+      if (results.number) score += 10;
+      if (results.symbol) score += 15;
+      if (new Set(value).size >= 8) score += 5;
+
+      const commonPatterns = [
+        /^password/i, /^qwerty/i, /^admin/i, /^12345/, /^letmein/i
+      ];
+      const hasCommonPattern = commonPatterns.some(pattern => pattern.test(value));
+      if (hasCommonPattern) score = Math.min(score, 25);
+
+      score = Math.min(score, 100);
+      let level = 'Weak';
+      let color = 'var(--bad)';
+      if (score >= 70) { level = 'Strong'; color = 'var(--good)'; }
+      else if (score >= 40) { level = 'Medium'; color = 'var(--warn)'; }
+
+      return { results, score, level, color, hasCommonPattern };
+    }
+
+    function updateChecklist(results) {
+      Object.entries(results).forEach(([name, passed]) => {
+        const item = document.getElementById(name);
+        item.classList.toggle('pass', passed);
+        item.querySelector('.dot').textContent = passed ? '✓' : '–';
+      });
+    }
+
+    function update() {
+      const value = passwordInput.value;
+      if (!value) {
+        strengthLabel.textContent = 'Not checked';
+        bar.style.width = '0%';
+        bar.style.background = 'var(--bad)';
+        hint.textContent = 'Enter a password to see its strength and improvement tips.';
+        progress.setAttribute('aria-valuenow', '0');
+        updateChecklist(Object.fromEntries(Object.keys(checks).map(key => [key, false])));
+        return;
+      }
+
+      const result = evaluatePassword(value);
+      updateChecklist(result.results);
+      strengthLabel.textContent = result.level;
+      strengthLabel.style.color = result.color;
+      bar.style.width = result.score + '%';
+      bar.style.background = result.color;
+      progress.setAttribute('aria-valuenow', String(result.score));
+
+      const tips = [];
+      if (!result.results.length) tips.push('Use at least 12 characters');
+      if (!result.results.upper) tips.push('add an uppercase letter');
+      if (!result.results.lower) tips.push('add a lowercase letter');
+      if (!result.results.number) tips.push('add a number');
+      if (!result.results.symbol) tips.push('add a special character');
+      if (!result.results.long) tips.push('consider 16 or more characters');
+      if (result.hasCommonPattern) tips.push('avoid common words or predictable patterns');
+
+      if (result.hasCommonPattern) {
+        hint.textContent = 'This starts with a commonly used word or pattern. Choose a less predictable passphrase.';
+      } else if (result.level === 'Strong' && tips.length <= 1) {
+        hint.textContent = 'Good result against these basic checks. A unique password or passphrase is still important.';
+      } else {
+        hint.textContent = tips.length ? 'Suggestions: ' + tips.join('; ') + '.' : 'Good result against these basic checks.';
+      }
+    }
+
+    passwordInput.addEventListener('input', update);
+    toggleButton.addEventListener('click', () => {
+      const showing = passwordInput.type === 'password';
+      passwordInput.type = showing ? 'text' : 'password';
+      toggleButton.textContent = showing ? 'Hide' : 'Show';
+      toggleButton.setAttribute('aria-pressed', String(showing));
+      passwordInput.focus();
+    });
+    update();
+  </script>
+</body>
+</html>
